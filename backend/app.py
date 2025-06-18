@@ -14,11 +14,9 @@ CORS(app)  # Enable CORS for all routes
 NEWSDATA_API_KEY = os.getenv('NEWSDATA_API_KEY')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
-if not NEWSDATA_API_KEY or not GEMINI_API_KEY:
-    raise ValueError("Missing API keys. Please check your .env file.")
-
-# Configure Gemini API
-genai.configure(api_key=GEMINI_API_KEY)
+# Configure Gemini API if key is available
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
 
 # Add a test route
 @app.route('/')
@@ -26,7 +24,8 @@ def home():
     return jsonify({
         "message": "Welcome to News Digest API",
         "status": "running",
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
+        "api_keys_configured": bool(NEWSDATA_API_KEY and GEMINI_API_KEY)
     })
 
 @app.route('/test')
@@ -34,6 +33,9 @@ def test():
     return jsonify({"message": "Test route is working!"})
 
 def fetch_news(preferences):
+    if not NEWSDATA_API_KEY:
+        return []
+        
     try:
         # NewsData.io API endpoint
         url = 'https://newsdata.io/api/1/news'
@@ -71,6 +73,9 @@ def fetch_news(preferences):
         return []
 
 def summarize_article(article):
+    if not GEMINI_API_KEY:
+        return f"Summary of: {article['title']} (AI summarization not available)"
+        
     try:
         # Initialize Gemini model
         model = genai.GenerativeModel('gemini-pro')
@@ -117,7 +122,7 @@ def get_digest():
 
         articles = fetch_news(preferences)
         if not articles:
-            return jsonify({"error": "No articles found"}), 404
+            return jsonify({"error": "No articles found. Please check your API keys."}), 404
 
         digest = {
             'articles': [

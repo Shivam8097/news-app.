@@ -31,12 +31,17 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:5000/api/digest', {
+      // Use relative URL for Vercel deployment
+      const apiUrl = process.env.NODE_ENV === 'production' 
+        ? '/api/digest' 
+        : 'http://localhost:5000/api/digest';
+        
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ preferences }),
+        body: JSON.stringify(preferences),
       });
       
       if (!response.ok) {
