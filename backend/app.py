@@ -43,7 +43,7 @@ def fetch_news(preferences):
         # Prepare query parameters
         params = {
             'apikey': NEWSDATA_API_KEY,
-            'language': 'en',  # English news
+            'language': preferences.get('language', 'en'),  # Use selected language
             'size': 5,  # Number of articles to fetch
             'q': 'technology OR science'  # Default search query
         }
@@ -72,25 +72,19 @@ def fetch_news(preferences):
         print(f"Error fetching news: {e}")
         return []
 
-def summarize_article(article):
+def summarize_article(article, language='en'):
     if not GEMINI_API_KEY:
-        return f"Summary of: {article['title']} (AI summarization not available)"
-        
+        return "No summary available (AI summarization not available)."
     try:
         # Initialize Gemini model
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
         
         # Create a more focused prompt with available content
         content = article.get('description', '')
         if article.get('content'):
             content += "\n" + article.get('content')
             
-        prompt = f"""Please provide a brief, informative summary of this news article in 2-3 sentences:
-
-Title: {article['title']}
-Content: {content}
-
-Focus on the main points and key information."""
+        prompt = f"""Please provide a detailed, informative summary of this news article in 5-6 lines as if you are explaining it to a 5 year old.\n\nTitle: {article['title']}\nContent: {content}\n\nFocus on the main points, background, and key information. Respond in {language}."""
 
         # Generate content with safety settings
         response = model.generate_content(
@@ -107,11 +101,11 @@ Focus on the main points and key information."""
             return response.text.strip()
         else:
             print(f"Empty response from Gemini for article: {article['title']}")
-            return f"Summary of: {article['title']}"
+            return "No summary available."
             
     except Exception as e:
         print(f"Error summarizing article '{article['title']}': {str(e)}")
-        return f"Summary of: {article['title']}"
+        return "No summary available."
 
 @app.route('/api/digest', methods=['POST'])
 def get_digest():
@@ -119,16 +113,15 @@ def get_digest():
         preferences = request.json
         if not preferences:
             return jsonify({"error": "No preferences provided"}), 400
-
+        language = preferences.get('language', 'en')
         articles = fetch_news(preferences)
         if not articles:
             return jsonify({"error": "No articles found. Please check your API keys."}), 404
-
         digest = {
             'articles': [
                 {
                     'title': article['title'],
-                    'summary': summarize_article(article),
+                    'summary': summarize_article(article, language),
                     'source': article.get('source_id', 'Unknown'),
                     'published_date': article.get('pubDate', ''),
                     'url': article.get('link', ''),

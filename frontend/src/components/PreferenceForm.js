@@ -7,7 +7,11 @@ import {
   FormControlLabel,
   Checkbox,
   Button,
-  CircularProgress
+  CircularProgress,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl
 } from '@mui/material';
 
 const topics = [
@@ -21,8 +25,21 @@ const topics = [
   'world'
 ];
 
+const languages = [
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'it', label: 'Italian' },
+  { code: 'ru', label: 'Russian' },
+  { code: 'zh', label: 'Chinese' },
+  { code: 'ar', label: 'Arabic' },
+  { code: 'hi', label: 'Hindi' }
+];
+
 function PreferenceForm({ onSubmit, loading }) {
   const [selectedTopics, setSelectedTopics] = useState([]);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
 
   const handleTopicChange = (topic) => {
     setSelectedTopics(prev => 
@@ -32,9 +49,13 @@ function PreferenceForm({ onSubmit, loading }) {
     );
   };
 
+  const handleLanguageChange = (event) => {
+    setSelectedLanguage(event.target.value);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ topics: selectedTopics });
+    onSubmit({ topics: selectedTopics, language: selectedLanguage });
   };
 
   return (
@@ -60,6 +81,21 @@ function PreferenceForm({ onSubmit, loading }) {
             ))}
           </Box>
         </FormGroup>
+        <FormControl fullWidth sx={{ mb: 3 }}>
+          <InputLabel id="language-label">Language</InputLabel>
+          <Select
+            labelId="language-label"
+            id="language-select"
+            value={selectedLanguage}
+            label="Language"
+            onChange={handleLanguageChange}
+            disabled={loading}
+          >
+            {languages.map((lang) => (
+              <MenuItem key={lang.code} value={lang.code}>{lang.label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
           <Button
             type="submit"

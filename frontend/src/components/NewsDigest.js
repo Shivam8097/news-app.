@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -10,7 +10,26 @@ import {
   Grid
 } from '@mui/material';
 
-function NewsDigest({ articles, loading }) {
+function NewsDigest({ articles, loading, language = 'en' }) {
+  const handleSpeak = useCallback((text) => {
+    if ('speechSynthesis' in window) {
+      const synth = window.speechSynthesis;
+      const voices = synth.getVoices();
+      // Try to find a voice that matches the language exactly, or by prefix (e.g., 'es' for 'es-ES')
+      let voice = voices.find(v => v.lang === language) || voices.find(v => v.lang.startsWith(language));
+      if (!voice) {
+        alert('Sorry, your browser does not have a voice for this language.');
+        return;
+      }
+      const utterance = new window.SpeechSynthesisUtterance(text);
+      utterance.lang = language;
+      utterance.voice = voice;
+      synth.speak(utterance);
+    } else {
+      alert('Sorry, your browser does not support text-to-speech.');
+    }
+  }, [language]);
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
@@ -47,6 +66,9 @@ function NewsDigest({ articles, loading }) {
                 <Typography variant="body2" color="text.secondary" paragraph>
                   {article.summary}
                 </Typography>
+                <button onClick={() => handleSpeak(article.summary)} style={{ marginBottom: 8 }}>
+                  🔊 Hear Summary
+                </button>
                 <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="caption" color="text.secondary">
                     Source: {article.source}

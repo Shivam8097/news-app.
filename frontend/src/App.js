@@ -26,10 +26,12 @@ function App() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
 
   const handlePreferencesSubmit = async (preferences) => {
     setLoading(true);
     setError(null);
+    setSelectedLanguage(preferences.language || 'en');
     try {
       // Use relative URL for Vercel deployment
       const apiUrl = process.env.NODE_ENV === 'production' 
@@ -71,7 +73,7 @@ function App() {
               {error}
             </Typography>
           )}
-          <NewsDigest articles={articles} loading={loading} />
+          <NewsDigest articles={articles} loading={loading} language={selectedLanguage} />
         </Box>
       </Container>
     </ThemeProvider>
