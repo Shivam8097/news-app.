@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import {
+import { 
   Box,
   Typography,
   Card,
@@ -7,10 +7,12 @@ import {
   CardMedia,
   Link,
   CircularProgress,
-  Grid
+  Grid,
+  Button
 } from '@mui/material';
+import { recordActivity } from '../api';
 
-function NewsDigest({ articles, loading, language = 'en' }) {
+function NewsDigest({ articles, loading, language = 'en', userId }) {
   const handleSpeak = useCallback((text) => {
     if ('speechSynthesis' in window) {
       const synth = window.speechSynthesis;
@@ -29,6 +31,30 @@ function NewsDigest({ articles, loading, language = 'en' }) {
       alert('Sorry, your browser does not support text-to-speech.');
     }
   }, [language]);
+
+  const handleLike = async (article, liked) => {
+    if (!userId) return;
+    await recordActivity({
+      user_id: userId,
+      article_url: article.url,
+      article_title: article.title,
+      liked,
+      clicked_full_article: false,
+      time_spent: 0
+    });
+  };
+
+  const handleClickFullArticle = async (article) => {
+    if (!userId) return;
+    await recordActivity({
+      user_id: userId,
+      article_url: article.url,
+      article_title: article.title,
+      clicked_full_article: true,
+      liked: null,
+      time_spent: 0
+    });
+  };
 
   if (loading) {
     return (
@@ -69,6 +95,16 @@ function NewsDigest({ articles, loading, language = 'en' }) {
                 <button onClick={() => handleSpeak(article.summary)} style={{ marginBottom: 8 }}>
                   🔊 Hear Summary
                 </button>
+                {userId && (
+                  <Box sx={{ mt: 1, mb: 1, display: 'flex', gap: 1 }}>
+                    <Button size="small" variant="outlined" color="success" onClick={() => handleLike(article, true)}>
+                      Like
+                    </Button>
+                    <Button size="small" variant="outlined" color="error" onClick={() => handleLike(article, false)}>
+                      Dislike
+                    </Button>
+                  </Box>
+                )}
                 <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="caption" color="text.secondary">
                     Source: {article.source}
@@ -83,6 +119,7 @@ function NewsDigest({ articles, loading, language = 'en' }) {
                     target="_blank"
                     rel="noopener noreferrer"
                     sx={{ mt: 2, display: 'block' }}
+                    onClick={() => handleClickFullArticle(article)}
                   >
                     Read full article
                   </Link>

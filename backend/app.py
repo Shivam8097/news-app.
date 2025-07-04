@@ -5,11 +5,24 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from models import Base, User, Article, UserActivity
+from werkzeug.security import generate_password_hash, check_password_hash
 
 load_dotenv()  # Load environment variables from .env
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Database setup
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.join(BASE_DIR, 'app.db')
+engine = create_engine(f'sqlite:///{db_path}')
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create tables if they don't exist
+Base.metadata.create_all(bind=engine)
 
 NEWSDATA_API_KEY = os.getenv('NEWSDATA_API_KEY')
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -136,10 +149,76 @@ def get_digest():
         print(f"Error in get_digest: {str(e)}")  # Added error logging
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+    session = SessionLocal()
+    if session.query(User).filter_by(username=username).first():
+        session.close()
+        return jsonify({'error': 'Username already exists'}), 409
+    hashed_pw = generate_password_hash(password)
+    user = User(username=username, password_hash=hashed_pw)
+    session.add(user)
+    session.commit()
+    session.close()
+    return jsonify({'message': 'User registered successfully'})
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+    session = SessionLocal()
+    user = session.query(User).filter_by(username=username).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        session.close()
+        return jsonify({'error': 'Invalid username or password'}), 401
+    session.close()
+    return jsonify({'message': 'Login successful', 'user_id': user.id})
+
+@app.route('/api/activity', methods=['POST'])
+def record_activity():
+    data = request.json
+    user_id = data.get('user_id')
+    article_url = data.get('article_url')
+    time_spent = data.get('time_spent')
+    liked = data.get('liked')
+    clicked_full_article = data.get('clicked_full_article')
+    if not user_id or not article_url:
+        return jsonify({'error': 'user_id and article_url required'}), 400
+    session = SessionLocal()
+    # Find or create article
+    article = session.query(Article).filter_by(url=article_url).first()
+    if not article:
+        article = Article(title=data.get('article_title', 'Unknown'), url=article_url)
+        session.add(article)
+        session.commit()
+    # Record activity
+    activity = UserActivity(
+        user_id=user_id,
+        article_id=article.id,
+        time_spent=time_spent or 0.0,
+        liked=liked,
+        clicked_full_article=clicked_full_article or False
+    )
+    session.add(activity)
+    session.commit()
+    session.close()
+    return jsonify({'message': 'Activity recorded'})
+
 if __name__ == '__main__':
     print("Server starting...")
     print("Available routes:")
     print("- GET  /")
     print("- GET  /test")
     print("- POST /api/digest")
+    print("- POST /api/register")
+    print("- POST /api/login")
+    print("- POST /api/activity")
     app.run(debug=True)
